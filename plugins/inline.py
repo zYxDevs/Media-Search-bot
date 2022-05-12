@@ -25,7 +25,6 @@ async def answer(bot, query):
         )
         return
 
-    results = []
     if '|' in query.query:
         text, file_type = query.query.split('|', maxsplit=1)
         text = text.strip()
@@ -38,18 +37,16 @@ async def answer(bot, query):
     reply_markup = get_reply_markup(bot.username, query=text)
     files, next_offset = await get_search_results(text, file_type=file_type, max_results=10, offset=offset)
 
-    for file in files:
-        results.append(
-            InlineQueryResultCachedDocument(
-                title=file.file_name,
-                file_id=file.file_id,
-                caption=file.caption or "",
-                description=f'Size: {size_formatter(file.file_size)}\nType: {file.file_type}',
-                reply_markup=reply_markup
-            )
+    if results := [
+        InlineQueryResultCachedDocument(
+            title=file.file_name,
+            file_id=file.file_id,
+            caption=file.caption or "",
+            description=f'Size: {size_formatter(file.file_size)}\nType: {file.file_type}',
+            reply_markup=reply_markup,
         )
-
-    if results:
+        for file in files
+    ]:
         switch_pm_text = f"{emoji.FILE_FOLDER} Results"
         if text:
             switch_pm_text += f" for {text}"
@@ -62,7 +59,6 @@ async def answer(bot, query):
             next_offset=str(next_offset)
         )
     else:
-
         switch_pm_text = f'{emoji.CROSS_MARK} No results'
         if text:
             switch_pm_text += f' for "{text}"'
@@ -76,7 +72,8 @@ async def answer(bot, query):
 
 
 def get_reply_markup(username, query):
-    url = 't.me/share/url?url=' + quote(SHARE_BUTTON_TEXT.format(username=username))
+    url = f't.me/share/url?url={quote(SHARE_BUTTON_TEXT.format(username=username))}'
+
     buttons = [
         [
             InlineKeyboardButton('Search again', switch_inline_query_current_chat=query),
@@ -106,7 +103,7 @@ async def is_subscribed(bot, query):
     except Exception as e:
         logger.exception(e)
     else:
-        if not user.status == 'kicked':
+        if user.status != 'kicked':
             return True
 
     return False
